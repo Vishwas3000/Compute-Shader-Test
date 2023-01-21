@@ -27,19 +27,32 @@ public class ProceduralCircle : MonoBehaviour
     List<int> triangles  = new List<int>();
 
     List<Circle> circles = new List<Circle>();
-
+    
+    [Header("Animation Control")]
+    [SerializeField] float speed = 1f;
+    [SerializeField] bool rotate = false;
 
     // Start is called before the first frame update
     void Start()
     {
+        GenerateCircles();
     }
     private void Update()
     {
-        GenerateCircle();
-        
+        if(rotate)
+            UpdateCircles();
     }
+    void UpdateCircles()
+    {
+        UpdateVertices();
+        mesh.vertices = vertices.ToArray();
 
-    void GenerateCircle()
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+
+        meshFilter.sharedMesh= mesh;
+    }
+    void GenerateCircles()
     {
         mesh = new Mesh();
 
@@ -51,7 +64,7 @@ public class ProceduralCircle : MonoBehaviour
 
         LinkCircles();
 
-        UpdataData();
+        AddData();
         
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
@@ -82,11 +95,39 @@ public class ProceduralCircle : MonoBehaviour
 
             Quaternion rotation = Quaternion.Euler(0, -angle * i, 0);
             
-            Circle circle = new Circle(radius, circleResolution, i, position, rotation, isCap, isFlipped);
+            Circle circle = new Circle(radius, circleResolution, i, position, angle * i, rotation, isCap, isFlipped);
             circles.Add(circle);
         }
     }
-    void UpdataData()
+
+    void UpdateVertices()
+    {
+        MoveVertices();
+        vertices.Clear();
+        for(int i=0; i<circles.Count; i++)
+        {
+            vertices.AddRange(circles[i].GetVertices());
+        }
+    }
+    void MoveVertices()
+    {
+        for(int i=0; i<circles.Count; i++)
+        {
+            Vector3 position = circles[i].GetCenterPosition();
+            float angle = circles[i].GetAngle();
+            float iceCreamRadialDist = new Vector2(position.x - transform.position.x, position.z - transform.position.z).magnitude;
+            
+            angle += Time.deltaTime * speed;
+            
+            position.x = iceCreamRadialDist * Mathf.Cos(angle * Mathf.Deg2Rad);
+            position.z = iceCreamRadialDist * Mathf.Sin(angle * Mathf.Deg2Rad);
+
+            Quaternion rotation = Quaternion.Euler(0, -angle, 0);
+            
+            circles[i].UpdateCircle(position, angle, rotation);
+        }
+    }
+    void AddData()
     {
         for(int i=0; i<circles.Count; i++)
         {
