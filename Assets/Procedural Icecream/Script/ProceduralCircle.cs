@@ -1,8 +1,10 @@
 using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering.VirtualTexturing;
+using static Circle;
 
 public class ProceduralCircle : MonoBehaviour
 {
@@ -29,7 +31,9 @@ public class ProceduralCircle : MonoBehaviour
 
     List<Circle> circles = new List<Circle>();
 
-    
+    [Header("System Settings")]
+    [SerializeField] IceCreamState iceCreamState;
+
     [Header("Animation Control")]
     [SerializeField] float speed = 1f;
     [SerializeField] bool rotate = false;
@@ -37,27 +41,44 @@ public class ProceduralCircle : MonoBehaviour
     [SerializeField] Vector3 InitialOffset;
     [SerializeField] float flowRate = 1f;
     [SerializeField] float tollerence = 2f;
+    [SerializeField] float releaseRate = 10f;
 
 
-    float startTime = 0;
+    float startTime = - 1;
     bool isReset = false;
+    bool isEmitting;
+    float checkTime =0;
 
     enum MovementType
     {
         RotateAlongTheAxis,
         FollowHelix
     }
+    enum IceCreamState
+    {
+        Create,
+        Simulate
+    }
 
     // Start is called before the first frame update
     void Start()
     {
-        GenerateCircles();
     }
     private void Update()
     {
-        if(rotate)
+        switch(iceCreamState)
         {
-            UpdateCircles();
+            case IceCreamState.Create:                
+                GenerateCircles();
+                break;
+
+            case IceCreamState.Simulate:
+                if(rotate)
+                {
+                    UpdateCircles();
+                }
+                break;
+
         }
     }
     void UpdateCircles()
@@ -114,7 +135,8 @@ public class ProceduralCircle : MonoBehaviour
             Quaternion rotation = Quaternion.Euler(0, -incAngle * i, 0);
             
             Circle circle = new Circle(radius, circleResolution, i, position, incAngle * i, rotation, isCap, isFlipped);
-            circle.SetRested(true);
+
+            circle.SetActive(false);
             circles.Add(circle);
         }
     }
@@ -131,9 +153,9 @@ public class ProceduralCircle : MonoBehaviour
 
     void CheckCircle(int index)
     {
-        if (circles[index].GetRested())
+        if (!circles[index].GetMotionData().isActive)
         {
-            circles[index].SetRested(false);
+            circles[index].SetActive(true);
         }
 
     }
@@ -142,7 +164,7 @@ public class ProceduralCircle : MonoBehaviour
         switch(movementType)
         {
             case MovementType.RotateAlongTheAxis:
-
+                // For Debugging
                 for(int i=0; i<circles.Count; i++)
                 {
                     CheckCircle(i);
@@ -161,11 +183,12 @@ public class ProceduralCircle : MonoBehaviour
                     circles[i].UpdateCircle(position, angle, rotation);
                 }
 
-                if(isReset)
+                if (isReset)
                     isReset = false;
 
-
                 break;
+
+
             case MovementType.FollowHelix:
 
 
@@ -175,31 +198,48 @@ public class ProceduralCircle : MonoBehaviour
                 if(!isReset)
                 {
                     ResetPosition();
-                    startTime= Time.time;
+                    startTime= -1;
                 }
-                
+
                 for(int i=0; i<circles.Count; i++)
                 {
-                    float time = (Time.time - startTime);
+s
+                    if(isEmitting)
+                    {
+                        checkTime += Time.deltaTime / releaseRate;
+                    }
 
-                    if (time * time * time * flowRate < i)
+                    if (checkTime * flowRate < i)
                         break;
                     else
                     {
+                        Vector3 distanceCheck = circles[i].GetCenterPosition() - circles[i].GetFinalOrentation().position;
+
+                        if (!circles[i].GetMotionData().isActive && distanceCheck.magnitude>tollerence*10)
+                        {
+                            circles[i].SetActive(true);
+                            circles[i].SetStartTime(Time.time);
+                        }
+
                         Vector3 position = InitialOffset;
 
                         float currentCirclePercent = 1 - ((float)i / iceCreamResolution);
                         float realIceCreamRadius = currentCirclePercent * iceCreamRadius;
+                        
+                        MotionData motionData = circles[i].GetMotionData();
+                        float time = Time.time - motionData.startTime;
 
                         position.x = realIceCreamRadius * Mathf.Cos(incAngle * Mathf.Deg2Rad * i);
-                        position.y -= (time * time * time * flowRate - i) * yStep;
+                        //position.y -= (simulationTime * simulationTime * flowRate - i) * yStep;
+                        position.y -= (time * time * flowRate) * yStep;
                         position.z = realIceCreamRadius * Mathf.Sin(incAngle * Mathf.Deg2Rad * i);
 
                         Quaternion rotation = Quaternion.Euler(0, -incAngle * i, 0);
+
                         if (Mathf.Abs(position.y - circles[i].GetFinalOrentation().position.y) <= tollerence)
                         {
                             position.y = i * yStep;
-                            circles[i].SetRested(true);
+                            circles[i].SetActive(false);
                         }
                         circles[i].UpdateCircle(position, incAngle * i, rotation);
                     }
@@ -207,15 +247,20 @@ public class ProceduralCircle : MonoBehaviour
                 }
 
                 break;
+
+
         }
     }
     void ResetPosition()
     {
         for(int i=0; i<circles.Count; i++)
         {
+            circles[i].SetActive(true);
             circles[i].UpdateCircle(InitialOffset, 0, Quaternion.identity);
+            circles[i].SetActive(false);
         }
-        isReset= true;
+        isReset = true;
+        checkTime= 0;
     }
     void AddData()
     {
@@ -257,4 +302,10 @@ public class ProceduralCircle : MonoBehaviour
         triangles.Add(c1CenterIndex + 1);
 
     }
+
+    public void FlipEmit()
+    {
+        isEmitting ^= true;
+    }
+
 }

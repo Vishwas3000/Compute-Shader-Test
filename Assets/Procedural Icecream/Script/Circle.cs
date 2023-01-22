@@ -17,21 +17,27 @@ public class Circle
 
     bool isCap;
     bool isFlipped;
-    bool isRested = false;
+
 
     [Header("Data")]
     List<Vector3> vertices;
     List<int> triangles;
 
-    public struct FinalOrentation
+    public struct FinalOrentationData
     {
         public Vector3 position;
         public Quaternion rotation;
         public float angle;
     };
 
-    FinalOrentation data;
+    public struct MotionData
+    {
+        public bool isActive;
+        public float startTime;
+    };
 
+    FinalOrentationData finalOrentationData;
+    MotionData motionData;
 
     public Circle(float _radius, int _circleResolution, int _index, Vector3 _position,float _angle, Quaternion _rotation, bool _isCap, bool _isFlipped)
     {
@@ -40,7 +46,8 @@ public class Circle
         vertices = new List<Vector3>();
         triangles = new List<int>();
 
-        data = new FinalOrentation();
+        finalOrentationData = new FinalOrentationData();
+        motionData = new MotionData();
 
         CreateVertices();
         if(isCap)
@@ -48,13 +55,13 @@ public class Circle
             CreateTriangles();
         }
 
-        data.position = _position;
-        data.rotation = _rotation;
-        data.angle = _angle;
+        finalOrentationData.position = _position;
+        finalOrentationData.rotation = _rotation;
+        finalOrentationData.angle = _angle;
     }
     public void UpdateCircle(Vector3 _position, float _angle, Quaternion _rotation)
     {
-        if(!isRested)
+        if(motionData.isActive)
         {
             SetValues(_position, _angle,  _rotation);
             MoveVertices();
@@ -62,7 +69,7 @@ public class Circle
     }
     public void UpdateCircle(float _radius, int _circleResolution, int _index, Vector3 _position,float _angle, Quaternion _rotation, bool _isCap, bool _isFlipped)
     {
-        if(!isRested)
+        if(motionData.isActive)
         {
             SetValues(_radius, _circleResolution, _index, _position, _angle, _rotation, _isCap, _isFlipped);
             MoveVertices();
@@ -176,16 +183,20 @@ public class Circle
     {
         return angle;
     }
-    public void SetRested(bool _isRested)
+    public void SetActive(bool _isActive)
     {
-        isRested = _isRested;
+        motionData.isActive = _isActive;
     }
-    public bool GetRested()
+    public MotionData GetMotionData()
     {
-        return isRested;
+        return motionData;
     }
-    public FinalOrentation GetFinalOrentation()
+    public void SetStartTime(float _startTime)
     {
-        return data;
+        motionData.startTime = _startTime;
+    }
+    public FinalOrentationData GetFinalOrentation()
+    {
+        return finalOrentationData;
     }
 }
