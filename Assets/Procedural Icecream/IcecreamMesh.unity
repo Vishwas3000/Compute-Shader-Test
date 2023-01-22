@@ -510,11 +510,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   meshFilter: {fileID: 1988734414}
   circleResolution: 10
-  radius: 0.74
+  radius: 1
   iceCreamResolution: 67
   iceCreamRadius: 4.16
   iceCreamHeight: 5.54
   loops: 5
+  speed: 3.68
+  rotate: 1
+  movementType: 1
+  InitialOffset: {x: 0, y: 30, z: 0}
+  flowRate: 1
 --- !u!23 &1988734413
 MeshRenderer:
   m_ObjectHideFlags: 0

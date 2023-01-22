@@ -17,10 +17,20 @@ public class Circle
 
     bool isCap;
     bool isFlipped;
+    bool isRested = false;
 
     [Header("Data")]
     List<Vector3> vertices;
     List<int> triangles;
+
+    public struct FinalOrentation
+    {
+        public Vector3 position;
+        public Quaternion rotation;
+        public float angle;
+    };
+
+    FinalOrentation data;
 
 
     public Circle(float _radius, int _circleResolution, int _index, Vector3 _position,float _angle, Quaternion _rotation, bool _isCap, bool _isFlipped)
@@ -30,21 +40,33 @@ public class Circle
         vertices = new List<Vector3>();
         triangles = new List<int>();
 
+        data = new FinalOrentation();
+
         CreateVertices();
         if(isCap)
         {
             CreateTriangles();
         }
+
+        data.position = _position;
+        data.rotation = _rotation;
+        data.angle = _angle;
     }
     public void UpdateCircle(Vector3 _position, float _angle, Quaternion _rotation)
     {
-        SetValues(_position, _angle,  _rotation);
-        MoveVertices();
+        if(!isRested)
+        {
+            SetValues(_position, _angle,  _rotation);
+            MoveVertices();
+        }
     }
     public void UpdateCircle(float _radius, int _circleResolution, int _index, Vector3 _position,float _angle, Quaternion _rotation, bool _isCap, bool _isFlipped)
     {
-        SetValues(_radius, _circleResolution, _index, _position, _angle, _rotation, _isCap, _isFlipped);
-        MoveVertices();
+        if(!isRested)
+        {
+            SetValues(_radius, _circleResolution, _index, _position, _angle, _rotation, _isCap, _isFlipped);
+            MoveVertices();
+        }
         
     }
     
@@ -85,26 +107,6 @@ public class Circle
         position = _position;
         rotation = _rotation;
         angle = _angle;
-    }
-    public Vector3[] GetVertices()
-    {
-        return vertices.ToArray();
-    }
-    public int[] GetTriangles()
-    {
-        return triangles.ToArray();
-    }
-    public int GetCenterIndex()
-    {
-        return centerIndex;
-    }
-    public Vector3 GetCenterPosition()
-    {
-        return position;
-    }
-    public float GetAngle()
-    {
-        return angle;
     }
     void CreateVertices()
     {
@@ -151,5 +153,39 @@ public class Circle
             triangles.Add(centerIndex + 1);
             triangles.Add(circleResolution + centerIndex);
         }
+    }
+
+
+    public Vector3[] GetVertices()
+    {
+        return vertices.ToArray();
+    }
+    public int[] GetTriangles()
+    {
+        return triangles.ToArray();
+    }
+    public int GetCenterIndex()
+    {
+        return centerIndex;
+    }
+    public Vector3 GetCenterPosition()
+    {
+        return position;
+    }
+    public float GetAngle()
+    {
+        return angle;
+    }
+    public void SetRested(bool _isRested)
+    {
+        isRested = _isRested;
+    }
+    public bool GetRested()
+    {
+        return isRested;
+    }
+    public FinalOrentation GetFinalOrentation()
+    {
+        return data;
     }
 }
