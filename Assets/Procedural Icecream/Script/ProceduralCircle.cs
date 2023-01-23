@@ -6,6 +6,11 @@ using UnityEngine;
 using UnityEngine.Rendering.VirtualTexturing;
 using static Circle;
 
+public enum IceCreamState
+{
+    Create,
+    Simulate
+}
 public class ProceduralCircle : MonoBehaviour
 {
     [Header("Elements")]
@@ -32,7 +37,7 @@ public class ProceduralCircle : MonoBehaviour
     List<Circle> circles = new List<Circle>();
 
     [Header("System Settings")]
-    [SerializeField] IceCreamState iceCreamState;
+    [SerializeField] public IceCreamState iceCreamState;
 
     [Header("Animation Control")]
     [SerializeField] float speed = 1f;
@@ -41,30 +46,29 @@ public class ProceduralCircle : MonoBehaviour
     [SerializeField] Vector3 InitialOffset;
     [SerializeField] float flowRate = 1f;
     [SerializeField] float tollerence = 2f;
+    [SerializeField] float renderTollerence = 2f;
     [SerializeField] float releaseRate = 10f;
 
 
-    float startTime = - 1;
     bool isReset = false;
     bool isEmitting;
     float checkTime =0;
+    int duplicateCircles = 0;
+    int startActiveCircle;
+    int lastActiveCircle=0;
 
     enum MovementType
     {
         RotateAlongTheAxis,
         FollowHelix
     }
-    enum IceCreamState
-    {
-        Create,
-        Simulate
-    }
 
     // Start is called before the first frame update
     void Start()
     {
     }
-    private void Update()
+
+    public void Update()
     {
         switch(iceCreamState)
         {
@@ -75,6 +79,7 @@ public class ProceduralCircle : MonoBehaviour
             case IceCreamState.Simulate:
                 if(rotate)
                 {
+
                     UpdateCircles();
                 }
                 break;
@@ -198,50 +203,85 @@ public class ProceduralCircle : MonoBehaviour
                 if(!isReset)
                 {
                     ResetPosition();
-                    startTime= -1;
                 }
-
                 for(int i=0; i<circles.Count; i++)
                 {
-s
                     if(isEmitting)
                     {
                         checkTime += Time.deltaTime / releaseRate;
+                        //Debug.Log(gameObject.name + " is emmiting " + checkTime);
                     }
-
-                    if (checkTime * flowRate < i)
+                    //Debug.Log(gameObject.name + " : " +  startActiveCircle + " : " + (i - duplicateCircles));
+                    //
+                    if ((checkTime * flowRate <= (i - duplicateCircles)))
                         break;
+                    else if (((i - duplicateCircles) < startActiveCircle) && !circles[i - duplicateCircles].GetMotionData().isActive)
+                        continue;
                     else
                     {
                         Vector3 distanceCheck = circles[i].GetCenterPosition() - circles[i].GetFinalOrentation().position;
 
-                        if (!circles[i].GetMotionData().isActive && distanceCheck.magnitude>tollerence*10)
+                        if (!circles[i].GetMotionData().isActive && Mathf.Abs(distanceCheck.magnitude) > tollerence * 10)
                         {
                             circles[i].SetActive(true);
                             circles[i].SetStartTime(Time.time);
+
+                            if (i > 0)
+                            {
+                                //Debug.Log("Lineking circles");
+
+                                if (Mathf.Abs(circles[i - 1].GetCenterPosition().y - circles[i].GetCenterPosition().y) > renderTollerence)
+                                {
+                                    //Debug.Log("creating circle");
+                                    Circle dupCircle = new Circle(circles[i - 1]);
+                                    dupCircle.SetActive(true);
+                                    dupCircle.SetStartTime(Time.time);
+                                    dupCircle.UpdateCircle(InitialOffset, 0, Quaternion.identity);
+
+                                    circles.Insert(i, dupCircle);
+                                    //LinkCircles(dupCircle, circles[i+1]);
+                                    //i++;
+                                    duplicateCircles++;
+                                }
+                                else
+                                {
+                                    LinkCircles(circles[i - 1], circles[i]);
+
+                                }
+
+                            }
+
+                            mesh.triangles = triangles.ToArray();
+
+                            mesh.RecalculateBounds();
+                            mesh.RecalculateNormals();
+
+                            meshFilter.sharedMesh = mesh;
                         }
 
                         Vector3 position = InitialOffset;
 
                         float currentCirclePercent = 1 - ((float)i / iceCreamResolution);
                         float realIceCreamRadius = currentCirclePercent * iceCreamRadius;
-                        
+
                         MotionData motionData = circles[i].GetMotionData();
                         float time = Time.time - motionData.startTime;
 
-                        position.x = realIceCreamRadius * Mathf.Cos(incAngle * Mathf.Deg2Rad * i);
-                        //position.y -= (simulationTime * simulationTime * flowRate - i) * yStep;
+                        position.x = realIceCreamRadius * Mathf.Cos(incAngle * Mathf.Deg2Rad * (i - duplicateCircles));
                         position.y -= (time * time * flowRate) * yStep;
-                        position.z = realIceCreamRadius * Mathf.Sin(incAngle * Mathf.Deg2Rad * i);
+                        position.z = realIceCreamRadius * Mathf.Sin(incAngle * Mathf.Deg2Rad * (i - duplicateCircles));
 
-                        Quaternion rotation = Quaternion.Euler(0, -incAngle * i, 0);
+                        Quaternion rotation = Quaternion.Euler(0, -incAngle * (i - duplicateCircles), 0);
 
-                        if (Mathf.Abs(position.y - circles[i].GetFinalOrentation().position.y) <= tollerence)
+                        if (circles[i].GetMotionData().isActive && Mathf.Abs(position.y - circles[i].GetFinalOrentation().position.y) <= tollerence)
                         {
-                            position.y = i * yStep;
+                            position.y = (i - duplicateCircles) * yStep;
                             circles[i].SetActive(false);
+                            //Debug.Log("set inactive " + i);
                         }
                         circles[i].UpdateCircle(position, incAngle * i, rotation);
+
+                        lastActiveCircle = Mathf.Max(lastActiveCircle, i - duplicateCircles);
                     }
 
                 }
@@ -251,9 +291,17 @@ s
 
         }
     }
-    void ResetPosition()
+    public void ResetPosition()
     {
-        for(int i=0; i<circles.Count; i++)
+        triangles.Clear();
+        mesh.triangles = triangles.ToArray();
+
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+
+        meshFilter.sharedMesh = mesh;
+
+        for (int i=0; i<circles.Count; i++)
         {
             circles[i].SetActive(true);
             circles[i].UpdateCircle(InitialOffset, 0, Quaternion.identity);
@@ -261,12 +309,20 @@ s
         }
         isReset = true;
         checkTime= 0;
+        lastActiveCircle= 0;
     }
     void AddData()
     {
         for(int i=0; i<circles.Count; i++)
         {
             vertices.AddRange(circles[i].GetVertices());
+            triangles.AddRange(circles[i].GetTriangles());
+        }
+    }
+    void AddTriangles()
+    {
+        for (int i = 0; i < circles.Count; i++)
+        {
             triangles.AddRange(circles[i].GetTriangles());
         }
     }
@@ -307,5 +363,16 @@ s
     {
         isEmitting ^= true;
     }
-
+    public bool IsEmitting()
+    {
+        return isEmitting;
+    }
+    public int GetLastActiveCircle()
+    {
+        return lastActiveCircle;
+    }
+    public void SetStartActiveCircle(int val)
+    {
+        startActiveCircle = val;
+    }
 }

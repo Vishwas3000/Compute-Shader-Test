@@ -28,12 +28,25 @@ public class Circle
         public Vector3 position;
         public Quaternion rotation;
         public float angle;
+
+        public FinalOrentationData(FinalOrentationData a)
+        {
+            position = a.position;
+            rotation = a.rotation;
+            angle = a.angle;
+        }
     };
 
     public struct MotionData
     {
         public bool isActive;
         public float startTime;
+
+        public MotionData(MotionData a)
+        {
+            isActive = a.isActive;
+            startTime = a.startTime;
+        }
     };
 
     FinalOrentationData finalOrentationData;
@@ -58,6 +71,27 @@ public class Circle
         finalOrentationData.position = _position;
         finalOrentationData.rotation = _rotation;
         finalOrentationData.angle = _angle;
+    }
+    public Circle(Circle circle)
+    {
+        radius= circle.radius;
+        circleResolution= circle.circleResolution;
+        index= circle.index;
+        position= circle.position;
+        angle= circle.angle;
+        rotation= circle.rotation;
+        isCap= circle.isCap;
+        isFlipped = circle.isFlipped;
+
+        vertices = new List<Vector3>();
+        triangles = new List<int>();
+
+        finalOrentationData = new FinalOrentationData(circle.GetFinalOrentation());
+        motionData = new MotionData(circle.GetMotionData());
+
+        vertices.AddRange(circle.vertices);
+        triangles.AddRange(circle.triangles);
+
     }
     public void UpdateCircle(Vector3 _position, float _angle, Quaternion _rotation)
     {

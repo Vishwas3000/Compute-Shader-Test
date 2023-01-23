@@ -23,7 +23,7 @@ public class ProceduralCircle_Inspector : Editor
 
         ProceduralCircle controller = (ProceduralCircle)target;
 
-        if(GUILayout.Button("Emit"))
+        if(GUILayout.Button("Flip Emit"))
         {
             controller.FlipEmit();
         }
